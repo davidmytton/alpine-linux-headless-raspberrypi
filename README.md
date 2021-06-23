@@ -94,7 +94,7 @@ can therefore be used to finish the configuration:
 4. Reboot.
 5. Create a new user to log into future sessions as.
 
-## Overlay directory structure
+## Overlay directory structure
 
 ```
 └── etc
@@ -108,7 +108,7 @@ can therefore be used to finish the configuration:
 4 directories, 3 files
 ```
 
-## Packaging the overlay
+## Packaging the overlay
 
 ```
 cd overlay
