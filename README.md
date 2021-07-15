@@ -37,7 +37,7 @@ want to wipe the SD card.
 5. Use the `n` command to create a second primary partition in position 2.
    Accept the default start placement and allow it to use the remainder of the
    disk. Use the `t` command to set the type to `Linux`.
-6. Use the `a` command to toggle the partition as bootable.
+6. Use the `a` command to toggle the first partition as bootable.
 7. Enter `w` to write the changes to the SD card.
 8. Assuming you now have two partitions called `/dev/mmcblk1p1` and
    `/dev/mmcblk1p2` (check with `fdisk -l`), create the filesystem:
@@ -89,7 +89,7 @@ can therefore be used to finish the configuration:
    mode](https://wiki.alpinelinux.org/wiki/Installation#Diskless_Mode).
 3. Run `setup-alpine` and follow the instructions. It will report there are no
    available disks and ask you to pick one. Assuming your SD card device is
-   called `mmcblk0` then choose that device. It will ask you if you want to
+   called `mmcblk0` then choose that device for `sys`. It will ask you if you want to
    erase the disk and then configure it as a persistent disk.
 4. Reboot.
 5. Create a new user to log into future sessions as.
