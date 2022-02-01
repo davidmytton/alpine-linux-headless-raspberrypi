@@ -61,5 +61,14 @@ rc-service networking start
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
 __edit_ess
 rc-service sshd restart
-mv /etc/ssh/sshd_config.orig /etc/ssh/sshd_config
 
+cat <<-EOF >> /tmp/_clean-up
+	#!/bin/sh
+	mv /etc/ssh/sshd_config.orig /etc/ssh/sshd_config
+	rc-update del local default
+	rm /etc/local.d/headless.start
+	rm /etc/.default_boot_services 
+	EOF
+
+chmod +x /tmp/_clean-up
+exec /tmp/_clean-up
