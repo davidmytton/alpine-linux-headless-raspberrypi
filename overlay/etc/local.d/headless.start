@@ -67,7 +67,6 @@ cat <<-EOF >> /tmp/_clean-up
 	mv /etc/ssh/sshd_config.orig /etc/ssh/sshd_config
 	rc-update del local default
 	rm /etc/local.d/headless.start
-	rm /etc/.default_boot_services 
 	EOF
 
 chmod +x /tmp/_clean-up
