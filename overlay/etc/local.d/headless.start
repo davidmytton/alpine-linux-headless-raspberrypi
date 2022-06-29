@@ -1,73 +1,105 @@
 #!/bin/sh
 
-__create_eni()
-{
-	cat <<-EOF > /etc/network/interfaces
-	auto lo
-	iface lo inet loopback
-
-	auto ${iface}
-	iface ${iface} inet dhcp
-	        hostname localhost
-	EOF
-}
-
-__create_eww()
-{
-	cat <<-EOF > /etc/wpa_supplicant/wpa_supplicant.conf
-	network={
-	        ssid="${ssid}"
-	        psk="${psk}"
-	}
-	EOF
-}
-
-__edit_ess()
-{
-	cat <<-EOF >> /etc/ssh/sshd_config
-	PermitEmptyPasswords yes
-	PermitRootLogin yes
-	EOF
-}
-
-__find_wint()
-{
-	for dev in /sys/class/net/*
-	do
-		if [ -e "${dev}"/wireless -o -e "${dev}"/phy80211 ]
-		then
-			echo "${dev##*/}"
-		fi
-	done
-}
-
+mkdir /tmp/.trash
 ovlpath=$(find /media -name *.apkovl.tar.gz -exec dirname {} \;)
-read ssid psk < "${ovlpath}/wifi.txt"
 
-if [ ${ssid} ]
-then
-  iface=$(__find_wint)
-  apk add wpa_supplicant
-  __create_eww
-  rc-service wpa_supplicant start
-else
-  iface="eth0"
+
+## Setup Network interfaces
+if [ -f "${ovlpath}/wpa_supplicant.conf" ]; then
+	apk add --quiet wpa_supplicant
+	cp "${ovlpath}/wpa_supplicant.conf" /etc/wpa_supplicant/wpa_supplicant.conf
+	rc-service wpa_supplicant start
 fi
 
-__create_eni
+if ! cp "${ovlpath}/interfaces" /etc/network/interfaces 2>/dev/null; then
+	# set default interfaces if not specified by interface file on boot storage
+	for dev in $(ls /sys/class/net)
+	do
+		case ${dev%%[0-9]*} in
+			lo)
+					cat <<-EOF >> /etc/network/interfaces
+					auto $dev
+					iface $dev inet loopback
+
+					EOF
+					;;
+			eth)
+					cat <<-EOF >> /etc/network/interfaces
+					auto $dev
+					iface $dev inet dhcp
+						hostname localhost
+
+					EOF
+					;;
+			wlan)
+					[ -f /etc/wpa_supplicant/wpa_supplicant.conf ] && cat <<-EOF >> /etc/network/interfaces
+					auto $dev
+					iface $dev inet dhcp
+						hostname localhost
+
+					EOF
+					;;
+			usb)
+					cat <<-EOF >> /etc/network/interfaces
+					auto $dev
+					iface $dev inet static
+					    address 10.42.0.2/24
+					    gateway 10.42.0.1
+					    hostname localhost
+
+					EOF
+
+					cat <<-EOF > /etc/resolv.conf
+					nameserver 208.67.222.222
+					nameserver 208.67.220.220
+
+					EOF
+					;;
+		esac
+	done
+fi
+
 rc-service networking start
 
-/sbin/setup-sshd -c openssh
-cp /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
-__edit_ess
-rc-service sshd restart
 
-cat <<-EOF >> /tmp/_clean-up
+## Setup temporary SSH server (root login, no password)
+## we use some bundled keys to avoid generation at boot and save time
+## bundled temporary keys are moved in /tmp so they won't be stored
+## within permanent config later (new ones will then be generated)
+apk add --quiet openssh
+
+mv /etc/ssh/ssh_host_* /tmp/.trash/.
+
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.orig
+cat <<-EOF >> /etc/ssh/sshd_config
+	AuthenticationMethods none
+	PermitEmptyPasswords yes
+	PermitRootLogin yes
+	HostKey /tmp/.trash/ssh_host_dsa_key
+	HostKey /tmp/.trash/ssh_host_ecdsa_key
+	HostKey /tmp/.trash/ssh_host_ed25519_key
+	HostKey /tmp/.trash/ssh_host_rsa_key
+	EOF
+
+cp /etc/conf.d/sshd /etc/conf.d/sshd.orig
+cat <<-EOF >> /etc/conf.d/sshd
+	sshd_disable_keygen=yes
+	EOF
+
+rc-service sshd start
+
+
+## Prep for final post-cleanup
+cat <<-EOF > /tmp/.trash/post-cleanup
 	#!/bin/sh
 	mv /etc/ssh/sshd_config.orig /etc/ssh/sshd_config
+	mv /etc/conf.d/sshd.orig /etc/conf.d/sshd
+	rm /etc/modules-load.d/g_ether.conf
+	rm /etc/modprobe.d/g_ether.conf
 	rc-update del local default
 	rm /etc/local.d/headless.start
 	EOF
 
-chmod +x /tmp/_clean-up
-exec /tmp/_clean-up
+chmod +x /tmp/.trash/post-cleanup
+exec /tmp/.trash/post-cleanup
+
