@@ -1,5 +1,11 @@
 # Howto: Deploy Alpine Linux on a headless Raspberry Pi
 
+## Deprecated 2022-07-18
+
+This repo is now deprecated in favor of https://github.com/macmpi/alpine-linux-headless-bootstrap
+
+## Readme
+
 The [Alpine Linux
 documentation](https://docs.alpinelinux.org/user-handbook/0.1a/Installing/setup_alpine.html)
 assumes you have a way to access your system directly, such as via a display
